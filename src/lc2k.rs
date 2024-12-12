@@ -1,3 +1,5 @@
+use std::str::SplitWhitespace;
+
 use error_chain::example_generated::{Result, ResultExt};
 
 pub const MEM_SIZE: usize = 65536;
@@ -22,10 +24,30 @@ impl Register {
 #[derive(Debug)]
 pub struct Label(String);
 
+impl Label {
+    pub fn from_str(src: &str) -> Option<Self> {
+        match src.chars().next() {
+            Some(ch) if ch.is_alphabetic() => Some(Label(src.into())),
+            _ => None
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Address {
     Literal(i32),
     Label(Label),
+}
+
+impl Address {
+    pub fn from_str(src: &str) -> Result<Self> {
+        let label = Label::from_str(src);
+
+        match label {
+            Some(l) => Ok(Address::Label(l)),
+            _ => Ok(Self::Literal(src.parse().chain_err(|| "Cannot parse address")?))
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -43,4 +65,59 @@ pub enum Instruction {
     Noop,
 
     Fill(i32),
+}
+
+impl Instruction {
+    pub fn from_str(mut src: SplitWhitespace) -> Result<Instruction> {
+        match src.next() {
+            Some("add") => Ok(
+                Self::Add(Register::from_str(src.next().chain_err(|| "Expected register 1")?)?,
+                          Register::from_str(src.next().chain_err(|| "Expected register 2")?)?, 
+                          Register::from_str(src.next().chain_err(|| "Expected register 3")?)?
+                )),
+            Some("nor") => Ok(
+                Self::Nor(Register::from_str(src.next().chain_err(|| "Expected register 1")?)?,
+                          Register::from_str(src.next().chain_err(|| "Expected register 2")?)?, 
+                          Register::from_str(src.next().chain_err(|| "Expected register 3")?)?
+                )),
+            Some("lw") => Ok(
+                Self::Lw(Register::from_str(src.next().chain_err(|| "Expected register 1")?)?,
+                          Register::from_str(src.next().chain_err(|| "Expected register 2")?)?, 
+                          Address::from_str(src.next().chain_err(|| "Expected address")?)?
+                )),
+            Some("sw") => Ok(
+                Self::Lw(Register::from_str(src.next().chain_err(|| "Expected register 1")?)?,
+                          Register::from_str(src.next().chain_err(|| "Expected register 2")?)?, 
+                          Address::from_str(src.next().chain_err(|| "Expected address")?)?
+                )),
+            Some("beq") => Ok(
+                Self::Lw(Register::from_str(src.next().chain_err(|| "Expected register 1")?)?,
+                          Register::from_str(src.next().chain_err(|| "Expected register 2")?)?, 
+                          Address::from_str(src.next().chain_err(|| "Expected address")?)?
+                )),
+            Some("jalr") => Ok(
+                Self::Jalr(Register::from_str(src.next().chain_err(|| "Expected register 1")?)?,
+                          Register::from_str(src.next().chain_err(|| "Expected register 2")?)?, 
+                )),
+            Some("halt") => Ok(Self::Halt),
+            Some("noop") => Ok(Self::Noop),
+            Some(".fill") => Ok(Self::Fill(
+                    src.next().chain_err(|| "Expected value")?.parse()
+                    .chain_err(|| "Fill value must be an integer")?
+                    )),
+            None => Err("Empty instruction".into()),
+            _ => Err("Invlid instruction".into())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Instruction;
+
+    #[test]
+    fn instr() {
+        let i = Instruction::from_str("lw 1 1 label".split_whitespace());
+        print!("{:?}", i);
+    }
 }
