@@ -111,13 +111,21 @@ impl Instruction {
     }
 }
 
+pub fn parse_line(src: &str) -> Result<(Option<Label>, Instruction)> {
+    let mut src = src.split_whitespace(); 
+        Ok((
+        Label::from_str(src.next().chain_err(|| "Unexpected end of line")?),
+        Instruction::from_str(src)?
+        ))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::Instruction;
+    use super::{parse_line, Instruction};
 
     #[test]
-    fn instr() {
-        let i = Instruction::from_str("lw 1 1 label".split_whitespace());
-        print!("{:?}", i);
+    fn parse() {
+        let i = parse_line("main lw 1 1 label");
+        print!("{:?}", i)
     }
 }
