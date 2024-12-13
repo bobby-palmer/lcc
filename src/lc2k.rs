@@ -1,6 +1,7 @@
 pub const MEM_SIZE: usize = 65536;
 pub const NUM_REG: usize = 8;
 
+#[derive(Debug)]
 pub struct Register(usize);
 
 impl Register {
@@ -13,6 +14,7 @@ impl Register {
     }
 }
 
+#[derive(Debug)]
 pub enum Address {
     Literal(i32),
     Symbol(String),
@@ -29,6 +31,7 @@ impl Address {
     }
 }
 
+#[derive(Debug)]
 pub enum Instruction {
     Add(Register, Register, Register),
     Nor(Register, Register, Register),
@@ -49,12 +52,11 @@ pub fn parse(src: &str) -> Vec<(Option<String>, Instruction)> {
     src.lines().map(|line| {
         let mut words = line.split_whitespace();
 
-        let label = words.next().unwrap();
-        let label = if label.is_empty() {
+        let label = if line.chars().next().unwrap().is_whitespace() {
             None
         }
         else {
-            Some(label.to_string())
+            Some(words.next().unwrap().to_string())
         };
 
         let instr = match words.next().unwrap() {
@@ -90,8 +92,19 @@ pub fn parse(src: &str) -> Vec<(Option<String>, Instruction)> {
             "halt" => Instruction::Halt,
             "fill" => Instruction::Fill(words.next().unwrap().parse().unwrap()),
             "noop" => Instruction::Noop,
-            _ => unreachable!("Bad instruction")
+            word => unreachable!("{word} is not a valid instruction")
         };
         (label, instr)
     }).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse;
+
+    #[test]
+    fn p() {
+        let i = parse("label lw 0 1 5\n");
+        print!("{:?}", i);
+    }
 }
